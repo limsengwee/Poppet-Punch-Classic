@@ -111,17 +111,31 @@ const App: React.FC = () => {
             const users = JSON.parse(localStorage.getItem('users') || '{}');
             let userData = users[firebaseUser.uid];
 
-            // If user data doesn't exist in localStorage, create it.
-            // This can happen if localStorage is cleared or on first Google Sign-In.
+            // Centralized logic to handle user data on login/signup.
+            // This prevents race conditions and ensures the demo account is always handled correctly.
             if (!userData) {
-                const newCredits = 100;
-                userData = { name: firebaseUser.displayName, credits: newCredits };
-                users[firebaseUser.uid] = userData;
-                localStorage.setItem('users', JSON.stringify(users));
+                // Case 1: Brand new user.
+                const isDemoUser = firebaseUser.email === 'sengwee.lim@gmail.com';
+                userData = { 
+                    name: firebaseUser.displayName, 
+                    credits: isDemoUser ? 1000 : 100 
+                };
+            } else {
+                // Case 2: Existing user.
+                if (firebaseUser.email === 'sengwee.lim@gmail.com') {
+                    // Reset credits to 1000 for the demo user on every login.
+                    userData.credits = 1000;
+                }
+                // Always update the display name in case it changed (e.g., in Google account).
+                userData.name = firebaseUser.displayName || userData.name;
             }
+
+            // Save the definitive user data back to localStorage.
+            users[firebaseUser.uid] = userData;
+            localStorage.setItem('users', JSON.stringify(users));
             
             setUser({ 
-                name: firebaseUser.displayName || userData.name || 'User', 
+                name: userData.name || 'User', 
                 uid: firebaseUser.uid 
             });
             

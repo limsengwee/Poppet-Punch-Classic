@@ -79,9 +79,8 @@ export const signUp = async (email: string, password: string, username: string):
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(userCredential.user, { displayName: username });
 
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    users[userCredential.user.uid] = { name: username, credits: 100 };
-    localStorage.setItem('users', JSON.stringify(users));
+    // User data creation (with initial credits) is now handled by the onAuthStateChanged
+    // listener in App.tsx to centralize logic and avoid race conditions.
 
     logSignUp('password');
     return userCredential.user;
@@ -97,23 +96,13 @@ export const googleSignIn = async (): Promise<User> => {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
+    // The user's credit and profile data management is now handled centrally
+    // by the onAuthStateChanged listener in App.tsx to prevent race conditions.
+    // We only check for new user status here for analytics logging.
     const users = JSON.parse(localStorage.getItem('users') || '{}');
-    const isNewUser = !users[user.uid];
-
-    if (user.email === 'sengwee.lim@gmail.com') {
-        // Special demo account: always set credits to 1000
-        users[user.uid] = { ...users[user.uid], name: user.displayName, credits: 1000, isGoogleUser: true };
-        if (isNewUser) {
-            logSignUp('google.com');
-        }
-    } else if (isNewUser) {
-        // New regular user: grant 100 credits
-        users[user.uid] = { name: user.displayName, credits: 100, isGoogleUser: true };
+    if (!users[user.uid]) {
         logSignUp('google.com');
     }
-    // For existing regular users, their data is already in `users` and doesn't need to be changed.
-    
-    localStorage.setItem('users', JSON.stringify(users));
     
     return user;
 };
