@@ -98,11 +98,23 @@ export const googleSignIn = async (): Promise<User> => {
     const user = result.user;
 
     const users = JSON.parse(localStorage.getItem('users') || '{}');
-    if (!users[user.uid]) { // It's a new user
+    const isNewUser = !users[user.uid];
+
+    if (user.email === 'sengwee.lim@gmail.com') {
+        // Special demo account: always set credits to 1000
+        users[user.uid] = { ...users[user.uid], name: user.displayName, credits: 1000, isGoogleUser: true };
+        if (isNewUser) {
+            logSignUp('google.com');
+        }
+    } else if (isNewUser) {
+        // New regular user: grant 100 credits
         users[user.uid] = { name: user.displayName, credits: 100, isGoogleUser: true };
-        localStorage.setItem('users', JSON.stringify(users));
         logSignUp('google.com');
     }
+    // For existing regular users, their data is already in `users` and doesn't need to be changed.
+    
+    localStorage.setItem('users', JSON.stringify(users));
+    
     return user;
 };
 
