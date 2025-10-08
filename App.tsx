@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { FaceBoundingBox, Dent, Spider, Needle, Bruise, Swelling, SlapAnimation, Smoke, Phlegm, ShoeAnimation, Burn, FlameParticle } from './types';
 import { detectFace, applyGenerativeImageEffect } from './services/geminiService';
@@ -1343,19 +1344,25 @@ const App: React.FC = () => {
                 video: { facingMode: 'user' } 
             });
             mediaStreamRef.current = stream;
-            const video = videoRef.current;
-            if (video) {
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    video.play();
-                };
-            }
             setIsCameraOpen(true);
         } catch (err) {
             console.error("Camera access denied:", err);
             setError(t('camera.error_access'));
         }
     }, [t]);
+
+    useEffect(() => {
+        if (isCameraOpen && videoRef.current && mediaStreamRef.current) {
+            const videoEl = videoRef.current;
+            if (videoEl.srcObject !== mediaStreamRef.current) {
+                videoEl.srcObject = mediaStreamRef.current;
+                videoEl.play().catch(err => {
+                    console.error("Error playing video stream:", err);
+                    setError(t('camera.error_access'));
+                });
+            }
+        }
+    }, [isCameraOpen, t]);
 
   const getPosOnImage = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
