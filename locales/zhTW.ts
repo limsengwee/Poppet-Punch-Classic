@@ -13,6 +13,9 @@ export default {
   },
   camera: {
     button: '使用相機',
+    capture: '拍照',
+    cancel: '取消',
+    error_access: '無法訪問相機。請檢查您的瀏覽器權限。',
   },
   toolbox: {
     title: '工具箱',

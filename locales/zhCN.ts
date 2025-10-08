@@ -13,6 +13,9 @@ export default {
   },
   camera: {
     button: '使用摄像头',
+    capture: '拍照',
+    cancel: '取消',
+    error_access: '无法访问摄像头。请检查您的浏览器权限。',
   },
   toolbox: {
     title: '工具箱',

@@ -13,6 +13,9 @@ export default {
   },
   camera: {
     button: 'Use Camera',
+    capture: 'Capture Photo',
+    cancel: 'Cancel',
+    error_access: 'Could not access the camera. Please check your browser permissions.',
   },
   toolbox: {
     title: 'Toolbox',

@@ -86,10 +86,13 @@ const App: React.FC = () => {
   const [activeTool, setActiveTool] = useState<ToolId>('mallet');
   const [strength, setStrength] = useState<number>(50);
   const [hasDestructiveChanges, setHasDestructiveChanges] = useState<boolean>(false);
+  const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDraggingRef = useRef(false);
   const renderInfo = useRef({ offsetX: 0, offsetY: 0, finalWidth: 1, finalHeight: 1 });
@@ -694,7 +697,7 @@ const App: React.FC = () => {
       grad2.addColorStop(1, `rgba(255, 200, 200, 0)`);
       ctx.fillStyle = grad2;
       ctx.beginPath();
-      ctx.ellipse(centerX, centerY, radiusX, radiusY, swell.rotation, 0, Math.PI * 2);
+      ctx.ellipse(centerX, centerY, radiusX, radiusY, swell.rotation, 0, 2 * Math.PI);
       ctx.fill();
       
       ctx.globalCompositeOperation = 'color-burn';
@@ -706,7 +709,7 @@ const App: React.FC = () => {
       grad3.addColorStop(0.8, `rgba(150, 0, 0, 0)`);
       ctx.fillStyle = grad3;
       ctx.beginPath();
-      ctx.ellipse(centerX, centerY, radiusX, radiusY, swell.rotation, 0, Math.PI * 2);
+      ctx.ellipse(centerX, centerY, radiusX, radiusY, swell.rotation, 0, 2 * Math.PI);
       ctx.fill();
 
       ctx.restore();
@@ -1274,6 +1277,85 @@ const App: React.FC = () => {
       offscreenCanvasRef.current = null;
     }
   };
+
+    const handleCloseCamera = useCallback(() => {
+        if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach(track => track.stop());
+            mediaStreamRef.current = null;
+        }
+        setIsCameraOpen(false);
+    }, []);
+
+    const handleCapture = useCallback(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        canvas.toBlob((blob) => {
+            if (blob) {
+                const file = new File([blob], `poppet-punch-${Date.now()}.jpg`, { type: 'image/jpeg' });
+                
+                if (imageSrc) URL.revokeObjectURL(imageSrc);
+                setImageFile(file);
+                setImageSrc(URL.createObjectURL(file));
+                
+                setFaceBox(null);
+                setDents([]);
+                setShoeAnimations([]);
+                setSpiders([]);
+                setNeedles([]);
+                setBruises([]);
+                setSwellings([]);
+                setSlapAnimations([]);
+                setBurns([]);
+                setSmoke([]);
+                setPhlegms([]);
+                setFlameParticles([]);
+                setHitCount(0);
+                setHasDestructiveChanges(false);
+                setWarning(null);
+                setError(null);
+                offscreenCanvasRef.current = null;
+
+                handleCloseCamera();
+            }
+        }, 'image/jpeg', 0.9);
+    }, [imageSrc, handleCloseCamera]);
+
+    const handleOpenCamera = useCallback(async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setError(t('camera.error_access'));
+            return;
+        }
+        
+        setError(null);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user' } 
+            });
+            mediaStreamRef.current = stream;
+            const video = videoRef.current;
+            if (video) {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                };
+            }
+            setIsCameraOpen(true);
+        } catch (err) {
+            console.error("Camera access denied:", err);
+            setError(t('camera.error_access'));
+        }
+    }, [t]);
 
   const getPosOnImage = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -2518,7 +2600,33 @@ const App: React.FC = () => {
         
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-black/20 rounded-2xl shadow-lg p-2 sm:p-4 flex flex-col items-center justify-center min-h-[60vh] lg:min-h-[75vh]">
-                {!imageSrc ? (
+                {isCameraOpen ? (
+                     <div className="relative w-full h-full flex flex-col items-center justify-center bg-black rounded-lg">
+                        <video 
+                            ref={videoRef} 
+                            playsInline
+                            autoPlay
+                            muted
+                            className="w-full h-full object-contain rounded-lg transform scale-x-[-1]"
+                        />
+                        <div className="absolute bottom-4 sm:bottom-6 flex flex-col sm:flex-row items-center gap-4 z-10">
+                            <button 
+                                onClick={handleCapture} 
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-red-700 text-white font-bold rounded-full hover:bg-red-600 transition-colors duration-300 shadow-lg text-lg"
+                                aria-label={t('camera.capture')}
+                            >
+                                <CameraIcon className="w-8 h-8" />
+                                <span>{t('camera.capture')}</span>
+                            </button>
+                            <button 
+                                onClick={handleCloseCamera} 
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-600/80 text-white font-bold rounded-full hover:bg-slate-500/80 transition-colors duration-300 shadow-lg text-sm"
+                            >
+                                {t('camera.cancel')}
+                            </button>
+                        </div>
+                    </div>
+                ) : !imageSrc ? (
                     <div className="text-center p-4">
                         <h2 className="text-3xl sm:text-4xl font-bold mb-2 text-slate-100">{t('upload.title')}</h2>
                         <p className="text-slate-400 mb-8 max-w-md">{t('upload.subtitle')}</p>
@@ -2528,7 +2636,7 @@ const App: React.FC = () => {
                                 <UploadIcon className="w-6 h-6" />
                                 {t('upload.button')}
                             </button>
-                            <button className="flex items-center justify-center gap-2 px-6 py-3 bg-red-700 text-white font-bold rounded-lg hover:bg-red-600 transition-colors duration-300 shadow-lg" disabled>
+                            <button onClick={handleOpenCamera} className="flex items-center justify-center gap-2 px-6 py-3 bg-red-700 text-white font-bold rounded-lg hover:bg-red-600 transition-colors duration-300 shadow-lg">
                                 <CameraIcon className="w-6 h-6" />
                                 {t('camera.button')}
                             </button>
@@ -2537,6 +2645,7 @@ const App: React.FC = () => {
                             <span className="text-2xl">✔</span>
                             <p>{t('upload.mallet_ready')}</p>
                         </div>
+                         {error && <div className="mt-4 text-center text-red-400 bg-red-900/50 px-4 py-2 rounded-md z-10 break-words">{error}</div>}
                     </div>
                 ) : (
                     <div 
