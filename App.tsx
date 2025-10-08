@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { FaceBoundingBox, Dent, Spider, Needle, Bruise, Swelling, SlapAnimation, Smoke, Phlegm, ShoeAnimation, Burn, FlameParticle } from './types';
 import { detectFace, applyGenerativeImageEffect } from './services/geminiService';
@@ -1228,7 +1225,8 @@ const App: React.FC = () => {
         setFaceBox(detectedFace);
     } else {
         setFaceBox(null);
-        setWarning(t('ai.face_detection_failed_fallback'));
+        // Do not show a UI warning; just log it. The app is fully functional without face detection.
+        console.warn(t('ai.face_detection_failed_fallback'));
     }
     
     setIsLoading(false);
